@@ -31,8 +31,12 @@ export const AuthProvider = ({ children }) => {
   // Mock pour enregistrement (à intégrer avec l'API)
   const registerMutation = useMutation({
     mutationFn: (data) => authService.register(data),
-    onSuccess: () => {
-      // Après inscription réussie, on peut rediriger vers login
+    onSuccess: (data) => {
+      // Si le backend retourne un token après l'inscription
+      if (data.token) {
+        setToken(data.token);
+        localStorage.setItem('token', data.token);
+      }
     },
   });
 

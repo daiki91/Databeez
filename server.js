@@ -94,7 +94,44 @@ function authMiddleware(req, res, next) {
 }
 
 app.get("/", (req, res) => {
-  res.send("Serveur Node.js fonctionne !");
+  const endpoints = {
+    status: "Serveur Databeez API en ligne",
+    version: "1.0.0",
+    baseURL: "http://localhost:3000",
+    endpoints: {
+      health: {
+        "GET /": "Liste tous les endpoints disponibles",
+        "GET /api": "Status de l'API",
+      },
+      authentication: {
+        "POST /api/auth/register": "Inscription - Body: { email?, phone?, password }",
+        "POST /api/auth/login": "Connexion - Body: { email?, phone?, password }",
+        "GET /api/auth/me": "Infos utilisateur actuels - Nécessite Authorization Bearer",
+      },
+      projects: {
+        "GET /api/projects": "Récupérer tous les projets - Nécessite Authorization Bearer",
+        "POST /api/projects": "Créer un projet - Body: { title, description? } - Nécessite Authorization Bearer",
+        "PUT /api/projects/:id": "Modifier un projet - Body: { title, description? } - Nécessite Authorization Bearer",
+        "DELETE /api/projects/:id": "Supprimer un projet - Nécessite Authorization Bearer",
+      },
+      notes: {
+        "GET /api/notes": "Récupérer toutes les notes - Nécessite Authorization Bearer",
+        "GET /api/projects/:projectId/notes": "Récupérer les notes d'un projet - Nécessite Authorization Bearer",
+        "POST /api/projects/:projectId/notes": "Créer une note - Body: { title, description? } - Nécessite Authorization Bearer",
+        "PUT /api/notes/:id": "Modifier une note - Body: { title, description? } - Nécessite Authorization Bearer",
+        "DELETE /api/notes/:id": "Supprimer une note - Nécessite Authorization Bearer",
+      },
+    },
+    authHeader: {
+      required: "Authorization: Bearer {token}",
+      example: "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    },
+    databaseStatus: {
+      mysql: "Connecté et initialisé",
+      minio: "Connecté et prêt",
+    },
+  };
+  res.json(endpoints);
 });
 
 app.get("/api", (req, res) => {
@@ -112,7 +149,16 @@ app.post("/api/auth/register", async (req, res) => {
       "INSERT INTO users (email, phone, password_hash) VALUES (?, ?, ?)",
       [email || null, phone || null, hash]
     );
-    return res.status(201).json({ id: result.insertId, email, phone });
+    
+    // Générer un token immédiatement après l'inscription
+    const token = jwt.sign({ id: result.insertId, email: email || null, phone: phone || null }, jwtSecret, { expiresIn: "8h" });
+    
+    return res.status(201).json({ 
+      id: result.insertId, 
+      email, 
+      phone,
+      token 
+    });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "Email ou téléphone déjà utilisé" });

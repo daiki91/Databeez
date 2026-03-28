@@ -40,14 +40,22 @@ export const Register = () => {
         password: data.password,
       };
 
-      await authRegister.mutateAsync(submittedData);
+      const result = await authRegister.mutateAsync(submittedData);
 
       setToast({
-        message: 'Inscription réussie ! Veuillez vous connecter.',
+        message: 'Inscription réussie !',
         type: 'success',
       });
       
-      setTimeout(() => navigate('/'), 1500);
+      // Si un token est retourné, rediriger au dashboard
+      // Sinon, rediriger à la page de connexion
+      setTimeout(() => {
+        if (result.token) {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
+      }, 1500);
     } catch (err) {
       setToast({
         message: err.response?.data?.message || 'Erreur lors de l\'inscription',

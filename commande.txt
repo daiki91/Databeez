@@ -1,0 +1,17 @@
+# Voir tous les logs en temps réel
+docker-compose logs -f
+
+# Vérifier l'état des conteneurs
+docker-compose ps
+
+# Redémarrer un service spécifique
+docker-compose restart backend
+docker-compose restart frontend
+
+# Voir les logs du backend uniquement
+docker-compose logs -f backend
+
+# Accéder à MySQL en ligne de commande
+docker exec -it databeez-mysql mysql -u root -p
+# Password: rootpass
+# Ensuite: USE databeez; SELECT * FROM users;
