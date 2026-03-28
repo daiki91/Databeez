@@ -29,10 +29,6 @@ const queryClient = new QueryClient({
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
-// Route protégée
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-
   if (isLoading) {
     return <LoadingSpinner fullScreen />;
   }
@@ -91,103 +87,6 @@ function App() {
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  );
-}
-
-export default App;
-              <button onClick={login} disabled={loading} className="primary">
-                {loading ? "⏳" : "🔓"} Se connecter
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <button onClick={logout} className="logout-btn">🚪 Se déconnecter</button>
-
-          <div className="project-section">
-            <h2>📁 Projets</h2>
-            <div className="form-row">
-              <input
-                placeholder="Titre du projet"
-                value={newProject.title}
-                onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
-                disabled={loading}
-              />
-              <input
-                placeholder="Description"
-                value={newProject.description}
-                onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                disabled={loading}
-              />
-              <button onClick={addProject} disabled={loading || !newProject.title?.trim()}>
-                {loading ? "⏳" : "➕"} Ajouter
-              </button>
-            </div>
-
-            {projects.length === 0 ? (
-              <p className="empty-state">Aucun projet. Créez-en un pour commencer!</p>
-            ) : (
-              <ul className="projects-list">
-                {projects.map((p) => (
-                  <li
-                    key={p.id}
-                    onClick={() => setActiveProjectId(p.id)}
-                    className={activeProjectId === p.id ? "active" : ""}
-                  >
-                    <strong>{p.title}</strong>
-                    {p.description && <span className="desc"> - {p.description}</span>}
-                    <span className="date">{new Date(p.created_at).toLocaleDateString()}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {activeProjectId && (
-            <div className="notes-section">
-              <h2>📝 Notes du projet</h2>
-              <div className="form-row">
-                <input
-                  placeholder="Titre de la note"
-                  value={newNote.title}
-                  onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-                  disabled={loading}
-                />
-                <input
-                  placeholder="Description"
-                  value={newNote.description}
-                  onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
-                  disabled={loading}
-                />
-                <button onClick={addNote} disabled={loading || !newNote.title?.trim()}>
-                  {loading ? "⏳" : "➕"} Ajouter
-                </button>
-              </div>
-
-              {notes.length === 0 ? (
-                <p className="empty-state">Aucune note dans ce projet</p>
-              ) : (
-                <ul className="notes-list">
-                  {notes.map((n) => (
-                    <li key={n.id}>
-                      <div className="note-content">
-                        <strong>{n.title}</strong>
-                        {n.description && <p>{n.description}</p>}
-                        <small>{new Date(n.created_at).toLocaleDateString()}</small>
-                      </div>
-                      <button onClick={() => deleteNote(n.id)} className="delete-btn">
-                        🗑️ Supprimer
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
   );
 }
 
