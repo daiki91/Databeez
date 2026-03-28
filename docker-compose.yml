@@ -1,16 +1,49 @@
 version: '3.9'
 services:
- minio:
- image: minio/minio:lastest
- container_name: minio
- ports:
- - "9000:9000"
- - "9001:9001"
- environment:
- MINIO_ROOT_USER: admin
- MINIO_ROOT_PASSWORD: passer123
- command: server /data --console-address ":9001"
- volumes:
- - minio_data:/data
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # console
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: passer123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  mysql:
+    image: mysql:8.0
+    container_name: databeez-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: databeez
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: dbpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: databeez-phpmyadmin
+    depends_on:
+      - mysql
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: dbuser
+      PMA_PASSWORD: dbpass
+
 volumes:
- minio_data:
+  minio_data:
+  mysql_data:
+

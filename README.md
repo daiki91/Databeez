@@ -45,7 +45,7 @@ cd databeez
 
 ### 2. Lancer Minio avec Docker Compose
 ```bash
-docker-compose up -d
+docker-compose up -d || docker-compose up --build
 ```
 Cela démarre Minio sur le port 9000 avec les credentials par défaut (minioadmin/minioadmin).
 

@@ -32,6 +32,7 @@ Une entreprise souhaite suivre l'évolution de ses projets. Chaque projet peut c
 
 ### Stockage
 - Les notes sont stockées dans un bucket S3 sur Minio
+- La base de données principale sera MySQL (hôte Docker)
 - Les projets peuvent être stockés en base de données locale ou en mémoire pour la démonstration
 
 ## Livrables Attendus
