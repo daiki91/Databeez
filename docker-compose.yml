@@ -12,6 +12,8 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    networks:
+      - databeez-network
 
   mysql:
     image: mysql:8.0
@@ -30,6 +32,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - databeez-network
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -42,8 +46,53 @@ services:
       PMA_HOST: mysql
       PMA_USER: dbuser
       PMA_PASSWORD: dbpass
+    networks:
+      - databeez-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: databeez-backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: dbuser
+      DATABASE_PASSWORD: dbpass
+      DATABASE_NAME: databeez
+      MINIO_ENDPOINT_HOST: minio
+      MINIO_ENDPOINT_PORT: 9000
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: passer123
+      MINIO_BUCKET: databeez-notes
+      JWT_SECRET: secret123
+    networks:
+      - databeez-network
+
+  frontend:
+    build:
+      context: ./gestion
+      dockerfile: Dockerfile.frontend
+    container_name: databeez-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://backend:3000/api
+    networks:
+      - databeez-network
 
 volumes:
   minio_data:
   mysql_data:
+
+networks:
+  databeez-network:
+    driver: bridge
 

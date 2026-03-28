@@ -97,6 +97,10 @@ app.get("/", (req, res) => {
   res.send("Serveur Node.js fonctionne !");
 });
 
+app.get("/api", (req, res) => {
+  res.json({ status: "ok", message: "API Databeez en ligne" });
+});
+
 app.post("/api/auth/register", async (req, res) => {
   const { email, phone, password } = req.body;
   if ((!email && !phone) || !password) {
@@ -232,7 +236,7 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
 (async () => {
   await initDb();
   await initStorage();
-  app.listen(PORT, () => {
-    console.log(`Serveur lancé sur http://localhost:${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Serveur lancé sur port ${PORT}`);
   });
 })();

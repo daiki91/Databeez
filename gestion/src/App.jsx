@@ -1,167 +1,188 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import "./App.css";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Dashboard } from './pages/Dashboard';
+import { Projects } from './pages/Projects';
+import { ProjectDetail } from './pages/ProjectDetail';
+import { Layout } from './components/layout/Layout';
+import { LoadingSpinner } from './components/common/LoadingSpinner';
+import './styles/index.css';
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+// Configuration React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Route protégée
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+// Route protégée
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner fullScreen />;
+  }
+
+  return isAuthenticated ? children : <Navigate to="/" />;
+};
 
 function App() {
-  const [token, setToken] = useState("");
-  const [user, setUser] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [notes, setNotes] = useState([]);
-  const [activeProjectId, setActiveProjectId] = useState(null);
-
-  const [authForm, setAuthForm] = useState({ email: "", phone: "", password: "" });
-  const [newProject, setNewProject] = useState({ title: "", description: "" });
-  const [newNote, setNewNote] = useState({ title: "", description: "" });
-  const [status, setStatus] = useState("");
-
-  const headers = { Authorization: `Bearer ${token}` };
-
-  async function loadProjects() {
-    if (!token) return;
-    try {
-      const { data } = await axios.get(`${API}/projects`, { headers });
-      setProjects(data);
-    } catch (err) {
-      console.error(err);
-      setStatus("Impossible de charger les projets");
-    }
-  }
-
-  async function loadNotes(projectId) {
-    if (!token) return;
-    try {
-      const { data } = await axios.get(`${API}/projects/${projectId}/notes`, { headers });
-      setNotes(data);
-    } catch (err) {
-      console.error(err);
-      setStatus("Impossible de charger les notes");
-    }
-  }
-
-  useEffect(() => {
-    if (token) {
-      setStatus("Connecté");
-      axios
-        .get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(({ data }) => setUser(data.user))
-        .catch(() => setUser(null));
-      loadProjects();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (activeProjectId) loadNotes(activeProjectId);
-  }, [activeProjectId]);
-
-  const register = async () => {
-    setStatus("Enregistrement...");
-    try {
-      await axios.post(`${API}/auth/register`, authForm);
-      setStatus("Inscription réussie, connectez-vous");
-    } catch (err) {
-      setStatus(err.response?.data?.message || "Erreur inscription");
-    }
-  };
-
-  const login = async () => {
-    setStatus("Connexion...");
-    try {
-      const { data } = await axios.post(`${API}/auth/login`, authForm);
-      setToken(data.token);
-      setStatus("Connecté");
-    } catch (err) {
-      setStatus(err.response?.data?.message || "Erreur connexion");
-    }
-  };
-
-  const addProject = async () => {
-    if (!newProject.title) return setStatus("Titre requis");
-    try {
-      await axios.post(`${API}/projects`, newProject, { headers });
-      setNewProject({ title: "", description: "" });
-      loadProjects();
-      setStatus("Projet créé");
-    } catch (err) {
-      setStatus(err.response?.data?.message || "Erreur création projet");
-    }
-  };
-
-  const addNote = async () => {
-    if (!activeProjectId || !newNote.title) return setStatus("Sélectionner projet + titre note requis");
-    try {
-      await axios.post(`${API}/projects/${activeProjectId}/notes`, newNote, { headers });
-      setNewNote({ title: "", description: "" });
-      loadNotes(activeProjectId);
-      setStatus("Note ajoutée");
-    } catch (err) {
-      setStatus(err.response?.data?.message || "Erreur création note");
-    }
-  };
-
-  const deleteNote = async (id) => {
-    await axios.delete(`${API}/notes/${id}`, { headers });
-    setStatus("Note supprimée");
-    loadNotes(activeProjectId);
-  };
-
-  const logout = () => {
-    setToken("");
-    setUser(null);
-    setStatus("Déconnecté");
-  };
-
   return (
-    <div className="app">
-      <h1>Databeez - Gestion de projets</h1>
-      <p>{status}</p>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Pages publiques */}
+              <Route path="/" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-      {!token ? (
-        <div className="auth-grid">
-          <div>
-            <h2>Inscription / Connexion</h2>
-            <input placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} />
-            <input placeholder="Téléphone" value={authForm.phone} onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })} />
-            <input type="password" placeholder="Mot de passe" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} />
-            <button onClick={register}>S'inscrire</button>
-            <button onClick={login}>Se connecter</button>
+              {/* Pages protégées */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Dashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Projects />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ProjectDetail />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Redirection par défaut */}
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Router>
+          <Toaster position="top-right" theme="system" />
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
+              <button onClick={login} disabled={loading} className="primary">
+                {loading ? "⏳" : "🔓"} Se connecter
+              </button>
+            </div>
           </div>
         </div>
       ) : (
         <>
-          <button onClick={logout}>Se déconnecter</button>
+          <button onClick={logout} className="logout-btn">🚪 Se déconnecter</button>
+
           <div className="project-section">
-            <h2>Projets</h2>
+            <h2>📁 Projets</h2>
             <div className="form-row">
-              <input placeholder="Titre projet" value={newProject.title} onChange={(e) => setNewProject({ ...newProject, title: e.target.value })} />
-              <input placeholder="Description" value={newProject.description} onChange={(e) => setNewProject({ ...newProject, description: e.target.value })} />
-              <button onClick={addProject}>Ajouter projet</button>
+              <input
+                placeholder="Titre du projet"
+                value={newProject.title}
+                onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                disabled={loading}
+              />
+              <input
+                placeholder="Description"
+                value={newProject.description}
+                onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                disabled={loading}
+              />
+              <button onClick={addProject} disabled={loading || !newProject.title?.trim()}>
+                {loading ? "⏳" : "➕"} Ajouter
+              </button>
             </div>
-            <ul>
-              {projects.map((p) => (
-                <li key={p.id} onClick={() => setActiveProjectId(p.id)} className={activeProjectId === p.id ? "active" : ""}>
-                  {p.title} ({new Date(p.created_at).toLocaleString()})
-                </li>
-              ))}
-            </ul>
+
+            {projects.length === 0 ? (
+              <p className="empty-state">Aucun projet. Créez-en un pour commencer!</p>
+            ) : (
+              <ul className="projects-list">
+                {projects.map((p) => (
+                  <li
+                    key={p.id}
+                    onClick={() => setActiveProjectId(p.id)}
+                    className={activeProjectId === p.id ? "active" : ""}
+                  >
+                    <strong>{p.title}</strong>
+                    {p.description && <span className="desc"> - {p.description}</span>}
+                    <span className="date">{new Date(p.created_at).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {activeProjectId && (
             <div className="notes-section">
-              <h2>Notes du projet #{activeProjectId}</h2>
+              <h2>📝 Notes du projet</h2>
               <div className="form-row">
-                <input placeholder="Titre note" value={newNote.title} onChange={(e) => setNewNote({ ...newNote, title: e.target.value })} />
-                <input placeholder="Description" value={newNote.description} onChange={(e) => setNewNote({ ...newNote, description: e.target.value })} />
-                <button onClick={addNote}>Ajouter note</button>
+                <input
+                  placeholder="Titre de la note"
+                  value={newNote.title}
+                  onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+                  disabled={loading}
+                />
+                <input
+                  placeholder="Description"
+                  value={newNote.description}
+                  onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+                  disabled={loading}
+                />
+                <button onClick={addNote} disabled={loading || !newNote.title?.trim()}>
+                  {loading ? "⏳" : "➕"} Ajouter
+                </button>
               </div>
-              <ul>
-                {notes.map((n) => (
-                  <li key={n.id}>
-                    <strong>{n.title}</strong> — {n.description} <button onClick={() => deleteNote(n.id)}>Supprimer</button>
-                  </li>
-                ))}
-              </ul>
+
+              {notes.length === 0 ? (
+                <p className="empty-state">Aucune note dans ce projet</p>
+              ) : (
+                <ul className="notes-list">
+                  {notes.map((n) => (
+                    <li key={n.id}>
+                      <div className="note-content">
+                        <strong>{n.title}</strong>
+                        {n.description && <p>{n.description}</p>}
+                        <small>{new Date(n.created_at).toLocaleDateString()}</small>
+                      </div>
+                      <button onClick={() => deleteNote(n.id)} className="delete-btn">
+                        🗑️ Supprimer
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </>
