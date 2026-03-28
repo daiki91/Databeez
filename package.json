@@ -1,0 +1,15 @@
+{
+  "name": "databeez",
+  "version": "1.0.0",
+  "description": "une entreprise souhaite  suivre l'evolution de ses projets Chaque projet peut contenir plusieur note d'avance",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
