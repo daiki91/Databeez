@@ -1,49 +1,75 @@
-# Databeez - Application de Gestion de Projets
+# 📊 Databeez - Gestionnaire de Projets Moderne
 
-## 📋 Description
+> **Application web complètement conteneurisée** pour gérer vos projets et notes d'avancement avec authentification sécurisée.
 
-Databeez est une application web moderne de gestion de projets permettant de :
-- **S'authentifier** : Inscription et connexion sécurisées (email ou téléphone)
-- **Gérer des projets** : Création et organisation de projets par utilisateur
-- **Gérer les notes** : Ajout et suppression de notes d'avancement datées
-- **Stocker les données** : Notes persistantes sur Minio (S3-compatible) et utilisateurs/projets en MySQL
+## ✨ Fonctionnalités Principales
 
-### ✨ Fonctionnalités principales
-- 🔐 **Authentification JWT** : Inscription/connexion avec email ou téléphone
-- 📁 **Gestion des projets** : Création et organisation de projets
-- 📝 **Notes d'avancement** : Historique chronologique avec dates
-- 🎨 **Interface moderne** : Design épuré avec Tailwind CSS
-- 🌓 **Thème clair/sombre** : Toggle de thème avec persistance
-- 📱 **Responsive** : Optimisé pour mobile, tablette et desktop
-- ⚡ **Performances** : Animations fluides avec Framer Motion
-- 🔄 **Gestion d'état** : React Query pour une gestion API efficace
-- ✅ **Validation** : Formulaires avec React Hook Form et Zod
+- 🔐 **Authentification JWT** - Inscription/connexion avec email ou téléphone + mot de passe
+- 📁 **Gestion des Projets** - Créer, organiser et supprimer vos projets
+- 📝 **Notes d'Avancement** - Ajouter des notes datées et historisées par projet
+- 💾 **Stockage Dual** - MySQL pour la structure, Minio S3 pour les fichiers
+- 🎨 **Interface Moderne** - Design responsive avec TailwindCSS + animations Framer Motion
+- 🌓 **Thème Clair/Sombre** - Toggle de thème avec persistance
+- 📱 **Responsive Design** - Fonctionne sur mobile, tablette et desktop
+- 🚀 **Performance Optimisée** - React Query pour cache intelligent, Vite ultra-rapide
+- ✅ **Validation Robuste** - Zod pour validation schémas, React Hook Form pour formulaires
 
-## 🏗️ Architecture
+## 🏗️ Architecture Complète
 
 ### Backend (Node.js + Express)
+```
+Port: 3000 (http://localhost:3000)
 - API RESTful avec Express.js
-- Authentification JWT (Bearer tokens)
-- Endpoints pour : authentification, projets et notes
-- Intégration MySQL pour utilisateurs et projets
-- Intégration Minio (S3) pour les notes
+- Authentification JWT avec tokens 8h
+- Hashage des mots de passe avec bcrypt
+- Pool de connexions MySQL
+- Intégration Minio pour stockage S3
+- CORS activé pour développement
+```
 
 ### Frontend (React 19 + Vite)
-- Interface moderne avec **TailwindCSS 3.3**
-- Navigation avec **React Router 6**
-- Gestion API avec **React Query 5**
-- Formulaires avec **React Hook Form** + **Zod**
-- Animations fluides avec **Framer Motion**
-- Icônes avec **Lucide React**
-- Notifications avec **Sonner**
-- Support thème clair/sombre
+```
+Port: 5173 (http://localhost:5173)
+- React Router 6 pour navigation
+- React Query 5 pour cache API intelligent
+- TailwindCSS 3.3.6 pour styling
+- Framer Motion 10 pour animations
+- React Hook Form + Zod pour validation
+- Context API pour auth/theme
+- Lucide React pour icônes
+- Sonner pour toast notifications
+```
 
-### Base de données
-- **MySQL** : Utilisateurs, projets et métadonnées
-- **Minio (S3)** : Stockage des notes au format JSON
+### Base de Données
+```
+MYSQL (Port 3306)
+- Utilisateurs avec email/phone uniques
+- Projets avec timestamps
+- Notes avec foreign keys CASCADE
+- Initialisé automatiquement au démarrage
 
-### Conteneurisation
-- **Docker & Docker Compose** : Orchestration des services
+PhpMyAdmin (Port 8080)
+- Interface web pour gérer la BD
+- Admin MySQL pour debugging
+```
+
+### Stockage Objet
+```
+MINIO (Port 9000)
+- Compatible S3
+- Bucket: databeez-notes
+- Stocke notes en JSON
+- Console web incluse
+```
+
+### Réseau Docker
+```
+- Tous les conteneurs sur même réseau
+- Communication interne via noms de service
+- Frontend → Backend via http://localhost:3000
+- Backend → MySQL via host "mysql" (interne)
+- Backend → Minio via host "minio" (interne)
+```
 
 ## 🛠️ Technologies Utilisées
 
@@ -70,91 +96,149 @@ Databeez est une application web moderne de gestion de projets permettant de :
 ### Infrastructure
 - **Docker** & **Docker Compose** - Conteneurisation
 
-## Prérequis
-- Docker et Docker Compose installés
-- Node.js (version 16 ou supérieure) pour le développement local
-- Git
+## 🛠️ Prérequis
 
-## 🚀 Installation et Lancement
+### ⚙️ Obligatoire
+- **Docker Desktop** installé et actif
+  - Vérifiez: `docker --version` et `docker-compose --version`
+  - Windows/Mac: Téléchargez depuis https://www.docker.com/products/docker-desktop
+  - Linux: `sudo apt install docker.io docker-compose`
+  
+### ✅ Optionnel (pour développement local)
+- **Node.js** v20+ (pour lancer le code en local sans Docker)
+- **Git** (pour cloner le repository)
+- **Postman** ou **Thunder Client** (pour tester l'API)
+- **MySQL Workbench** (pour debug base de données)
 
-### 1. Cloner le dépôt
+---
+
+## 🚀 Installation Rapide (5 minutes)
+
+### Étape 1️⃣: Cloner le Projet
 ```bash
-git clone <url-du-depot>
+git clone <url-du-repository>
 cd databeez
 ```
 
-### 2. Lancer tous les services avec Docker Compose
+### Étape 2️⃣: Lancer les Conteneurs
 ```bash
 docker-compose up --build
 ```
 
-Cela démarre automatiquement :
-- **Backend** : http://localhost:3000
-- **Frontend** : http://localhost:5173 (à lancer manuellement, voir étape 6)
-- **MySQL** : Port 3306
-- **Minio** : http://localhost:9000 (Console : localhost:9000, credentials: minioadmin/minioadmin)
-
-### 3. Installer les dépendances du backend (optionnel si Docker suffisant)
-```bash
-npm install
+⏳ **Attendez ~30 secondes** que tout démarre. Vous devez voir:
+```
+✅ minio 
+✅ databeez-mysql
+✅ databeez-phpmyadmin
+✅ databeez-backend (Serveur lancé sur port 3000)
+✅ databeez-frontend (VITE ready in XXX ms)
 ```
 
-### 4. Installer les dépendances du frontend
-```bash
-cd gestion
-npm install
-cd ..
+### Étape 3️⃣: Vérifier que Tout fonctionne
+Ouvrez dans le navigateur:
+
+| Service | URL | Statut Attendu |
+|---------|-----|----------------|
+| **Frontend** | http://localhost:5173 | Page d'inscription/connexion |
+| **Backend API** | http://localhost:3000 | JSON liste des endpoints |
+| **API Status** | http://localhost:3000/api | `{"status":"ok"}` |
+| **PhpMyAdmin** | http://localhost:8080 | Interface de gestion MySQL |
+| **Minio Console** | http://localhost:9000 | Connexion admin/passer123 |
+
+✅ **Si tout est accessible, vous êtes prêt!**
+
+---
+
+## 📚 Utilisation Complète
+
+### 1️⃣ Inscription
+
+**URL**: http://localhost:5173/register
+
+**Test avec:**
+```
+Email: test@example.com
+OU Téléphone: +33612345678
+Mot de passe: password123 (minimum 6 caractères)
 ```
 
-### 5. Créer le fichier de configuration du frontend
-```bash
-cp gestion/.env.example gestion/.env.local
+**Comportement attendu:**
+1. ✅ Validation du formulaire (6 chars min)
+2. ✅ Toast "Inscription réussie !"
+3. ✅ Redirection automatique au dashboard
+4. ✅ Token JWT sauvegardé en localStorage
+
+**Vérification en BD:**
+```
+http://localhost:8080
+→ databeez/users
+→ Vous devez voir votre utilisateur créé
 ```
 
-Les valeurs par défaut devraient fonctionner en local.
+### 2️⃣ Connexion
 
-### 6. Lancer le frontend en développement
-```bash
-cd gestion
-npm run dev
+**URL**: http://localhost:5173 (page par défaut)
+
+**Utilisez les mêmes identifiants que l'inscription**
+
+### 3️⃣ Créer un Projet
+
+**Dans le dashboard:**
+1. Cliquez sur "Projets" dans la sidebar
+2. Cliquez "Créer un projet"
+3. Remplissez:
+   ```
+   Titre: Mon Premier Projet
+   Description: Description optionnelle
+   ```
+4. ✅ Projet apparaît dans la liste
+
+**Vérification en BD:**
+```
+http://localhost:8080
+→ databeez/projects
+→ Vous devez voir le projet créé
 ```
 
-Le frontend sera disponible sur **http://localhost:5173**
+### 4️⃣ Ajouter une Note
 
-### ✅ Votre application est prête !
-1. Accédez à http://localhost:5173
-2. Créez un compte (email ou téléphone + mot de passe)
-3. Commencez à gérer vos projets !
+**Dans la page du projet:**
+1. Cliquez sur un projet dans la liste
+2. Remplissez le formulaire "Ajouter une note":
+   ```
+   Titre: Note du Day 1
+   Description: Contenu détaillé
+   ```
+3. ✅ Note sauvegardée et affichée
 
-## 💡 Utilisation
+**Vérification en BD:**
+```
+http://localhost:8080
+→ databeez/notes
+→ Vous devez voir la note créée
 
-### 1. Authentification
-Accédez à http://localhost:5173
-- **Nouvelle inscription** : Cliquez sur "S'inscrire" et entrez email/téléphone + mot de passe (min. 6 caractères)
-- **Connexion** : Utilisez vos identifiants créés
+http://localhost:9000 (Minio)
+→ Bucket: databeez-notes
+→ Fichier: notes/{noteId}.json
+```
 
-### 2. Tableau de bord
-Après connexion, découvrez :
-- Vue d'ensemble avec statistiques
-- Accès rapide aux projets récents
-- Message de bienvenue personnalisé
+### 5️⃣ Thème Clair/Sombre
 
-### 3. Gérer vos projets
-- **Créer** : Cliquez sur "Nouveau projet" et remplissez titre + description
-- **Organiser** : Recherchez, triez par date ou alphabétiquement
-- **Consulter** : Cliquez sur un projet pour voir les détails et les notes
+Cliquez sur l'icône soleil/lune en haut à droite (dans le navbar).
 
-### 4. Ajouter des notes
-Dans un projet :
-- Cliquez sur "Ajouter une note"
-- Saisissez titre et description
-- Les notes s'affichent dans un historique chronologique
-- Supprimez les notes en cliquant sur l'icône poubelle
+- ✅ Thème bascule en temps réel
+- ✅ Préférence sauvegardée en localStorage
+- ✅ Système détecte la préférence OS
 
-### 5. Interface
-- 🌓 Basculez entre thème clair/sombre (bouton en haut à droite)
-- 📱 L'interface s'adapte à votre écran (mobile, tablette, desktop)
-- ⚡ Les animations fluides rendent l'expérience agréable
+### 6️⃣ Suppression
+
+**Supprimer une note:**
+- Cliquez l'icône poubelle sur la note
+- ✅ Note supprimée de MySQL et Minio
+
+**Supprimer un projet:**
+- Cliquez le bouton supprimer du projet
+- ✅ Projet et ses notes supprimés en cascade
 
 ## 📚 API Documentation
 
@@ -223,6 +307,292 @@ Configuré via docker-compose.yml :
 - **Password** : password
 - **Database** : databeez
 
+## � Troubleshooting Complet
+
+### ❌ Problème : Port déjà utilisé
+**Symptôm:** `Error: listen EADDRINUSE: address already in use :::3000`
+
+**Solutions:**
+```bash
+# Trouver le processus utilisant le port 3000
+netstat -ano | findstr :3000  (Windows)
+lsof -i :3000                  (Mac/Linux)
+
+# Tuer le processus
+taskkill /PID <PID> /F         (Windows)
+kill -9 <PID>                  (Mac/Linux)
+
+# OU simplement changer le port dans docker-compose.yml
+ports:
+  - "3001:3000"  # Au lieu de 3000
+```
+
+### ❌ Problème : ERR_NAME_NOT_RESOLVED (Frontend ne contacte pas Backend)
+**Symptôm:** Erreur réseau lors du login/inscription, Chrome affiche `ERR_NAME_NOT_RESOLVED: backend`
+
+**Cause:** Le frontend tente de contacter `http://backend:3000/api` (nom DNS Docker invalide depuis le navigateur)
+
+**Solution:**
+```yaml
+# docker-compose.yml - IMPORTANT!
+services:
+  frontend:
+    environment:
+      VITE_API_URL: http://localhost:3000/api  # ✅ Pas http://backend:3000/api !
+```
+
+```javascript
+// gestion/src/services/api.js
+const baseURL = 'http://localhost:3000/api';  // ✅ Toujours localhost!
+```
+
+> **⚠️ Note:** Frontend = navigateur = ne voit pas les noms Docker service. Utilisez toujours `localhost` depuis le browser.
+
+### ❌ Problème : Erreur npm install (Peer Dependencies)
+**Symptôm:** `npm ERR! ERESOLVE unable to resolve dependency tree`
+
+**Cause:** React 19 + lucide-react@0.294 ne sont pas compatibles ensemble
+
+**Solutions:**
+
+**Option 1: Fichier .npmrc (RECOMMANDÉ)**
+```bash
+# gestion/.npmrc
+legacy-peer-deps=true
+```
+
+**Option 2: Flag CLI**
+```bash
+cd gestion
+npm install --legacy-peer-deps
+npm ci --legacy-peer-deps
+```
+
+**Option 3: Vérifier versions installées**
+```bash
+npm list react lucide-react
+# Doit être:
+# react@19.2.4
+# lucide-react@0.408 (minimum!)
+```
+
+### ❌ Problème : MySQL ne démarre pas
+**Symptôm:** `docker-compose logs mysql` affiche erreurs de démarrage
+
+**Solutions:**
+
+**1. Nettoyage complet:**
+```bash
+# Supprimer tous les volumes et conteneurs
+docker-compose down -v
+
+# Redémarrer
+docker-compose up --build
+```
+
+**2. Vérifier le port:**
+```bash
+# Vérifier que 3306 n'est pas utilisé
+netstat -ano | findstr :3306  (Windows)
+
+# Sinon changer dans docker-compose.yml
+ports:
+  - "3307:3306"
+```
+
+**3. Vérifier les credentials:**
+```yaml
+# docker-compose.yml
+mysql:
+  environment:
+    MYSQL_ROOT_PASSWORD: password     # ✅ Must match server.js
+    MYSQL_DATABASE: databeez
+```
+
+```javascript
+// server.js
+const connection = mysql.createConnection({
+  host: 'mysql',
+  user: 'root',
+  password: 'password',  // ✅ Doit correspondre!
+  database: 'databeez'
+});
+```
+
+### ❌ Problème : Frontend affiche page blanche
+**Symptôm:** http://localhost:5173 affiche page vide, pas d'erreurs visibles
+
+**Solutions:**
+
+```bash
+# 1. Vérifier les logs Vite
+docker-compose logs frontend
+
+# 2. Vérifier la console du navigateur (F12 > Console)
+# Cherchez erreurs JS
+
+# 3. Forcer rebuild
+docker-compose down
+docker-compose up --build
+
+# 4. Vérifier main.jsx
+# gestion/src/main.jsx doit avoir:
+import React from 'react'
+import App from './App'
+ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+```
+
+### ❌ Problème : Minio ne répond pas
+**Symptôm:** Impossible d'accéder http://localhost:9000
+
+**Solutions:**
+
+```bash
+# 1. Vérifier le conteneur
+docker ps | findstr minio
+docker-compose logs minio
+
+# 2. Vérifier le port
+netstat -ano | findstr :9000
+
+# 3. Vérifier les credentials
+# docker-compose.yml:
+environment:
+  MINIO_ROOT_USER: minioadmin
+  MINIO_ROOT_PASSWORD: passer123  # Attention: c'est "passer123" pas "minioadmin"!
+
+# 4. Redémarrer
+docker-compose restart minio
+```
+
+### ❌ Problème : Inscription/Login ne fonctionne pas (formulaire)
+**Symptôm:** Bouton "S'inscrire" ne répond pas, pas d'erreur visible
+
+**Solutions:**
+
+**1. Tester l'API en Direct (Postman/Terminal):**
+```bash
+# Test registration
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# Response attendue:
+{"id":1,"email":"test@example.com","token":"eyJhbGc..."}
+```
+
+✅ Si Postman fonctionne mais le formulaire non → problème frontend
+❌ Si Postman échoue → problème backend
+
+**2. Si API fonctionne, déboguer le formulaire:**
+```javascript
+// gestion/src/pages/Register.jsx - Ajouter console.log
+const registerMutation = useMutation({
+  mutationFn: async (data) => {
+    console.log('Submitting:', data);  // ← Vérifier données
+    const response = await api.post('/auth/register', data);
+    console.log('Response:', response);  // ← Vérifier réponse
+    return response.data;
+  },
+  onSuccess: (data) => {
+    console.log('Success:', data);
+    localStorage.setItem('token', data.token);
+    // ... reste du code
+  }
+});
+```
+
+**3. Vérifier la validation Zod:**
+```javascript
+// gestion/src/utils/schemas.js
+export const registerSchema = z.object({
+  email: z.string().email('Email invalide'),
+  password: z.string().min(6, 'Min 6 caractères'),
+  phone: z.string().optional()
+});
+
+// Tester avec console:
+// registerSchema.parse({email: 'test@test.com', password: 'pass123'})
+```
+
+### ❌ Problème : "Token invalide" ou "Non autorisé"
+**Symptôm:** Erreur 401 après connexion, impossible d'accéder au dashboard
+
+**Solutions:**
+
+```bash
+# 1. Vérifier le token en localStorage
+# F12 > Application > Local Storage > localhost:5173
+# Clé: "token"
+# Doit contenir un JWT (eyJ...)
+
+# 2. Tester le token avec l'API
+curl -H "Authorization: Bearer <votre_token>" \
+  http://localhost:3000/api/auth/me
+
+# Si ça marche → problème intercept axios
+# Si ça échoue → problème token expiré ou invalide
+```
+
+```javascript
+// gestion/src/services/api.js - Vérifier les interceptors
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+    console.log('Token envoyé:', token.substring(0, 20) + '...');  // Debug
+  }
+  return config;
+});
+```
+
+**3. Si token expiré (> 8h):**
+```bash
+# Se reconnecter simplement
+# Token va être régénéré
+```
+
+### ❌ Problème : Création de projet/note échoue
+**Symptôm:** Erreur 500 ou 403 lors de création
+
+**Solutions:**
+
+```bash
+# 1. Vérifier les logs backend
+docker-compose logs backend
+
+# 2. Tester avec Postman (avec le token)
+POST http://localhost:3000/api/projects
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Mon Projet",
+  "description": "Description"
+}
+
+# Vérifier la réponse
+```
+
+```javascript
+// gestion/src/pages/Projects.jsx - Debug mutation
+const createProjectMutation = useMutation({
+  mutationFn: async (data) => {
+    console.log('Creating project:', data);
+    try {
+      const response = await api.post('/projects', data);
+      console.log('Project created:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Creation failed:', error.response?.data);
+      throw error;
+    }
+  }
+});
+```
+
+---
+
 ## 🔧 Développement
 
 ### Scripts Frontend
@@ -244,14 +614,14 @@ npm run lint
 
 ### Scripts Backend
 ```bash
-# Mode développement
+# Mode développement (si local)
 npm run dev
 
 # Démarrage normal
 npm start
 ```
 
-### Scripts Docker
+### Scripts Docker Utiles
 ```bash
 # Démarrer tous les services
 docker-compose up
@@ -262,51 +632,104 @@ docker-compose up -d
 # Arrêter les services
 docker-compose down
 
-# Voir les logs
+# Voir les logs en temps réel
 docker-compose logs -f
 
 # Logs d'un service spécifique
 docker-compose logs -f backend
+docker-compose logs -f frontend
 docker-compose logs -f mysql
 docker-compose logs -f minio
+
+# Rebuild sans cache
+docker-compose up --build --no-cache
+
+# Supprimer les volumes (reset DB)
+docker-compose down -v
+docker-compose up --build
+
+# Redémarrer un service
+docker-compose restart backend
+
+# Exécuter une commande dans un conteneur
+docker-compose exec backend npm list
+docker-compose exec mysql mysql -u root -p databeez
 ```
 
-### Débogage
+### Inspection et Débogage
 
-#### Frontend
+#### Frontend (React 19)
 - **Port Vite** : http://localhost:5173
-- **Outils Chrome DevTools** : F12 pour inspecter l'interface React
-- **Vérifier les imports** : Assurez-vous que les chemins d'importation sont corrects
-- **Tokens JWT** : Les tokens s'affichent dans les en-têtes Authorization (Network tab)
-- **Dark mode** : Testez le basculement thème en haut à droite
+- **Chrome DevTools** : F12 pour inspecter l'interface
+- **Network tab** : Vérifier requêtes API et réponses
+- **Console** : Chercher les erreurs JavaScript
+- **Application tab** : Vérifier localStorage → token JWT
+- **React DevTools** : Extension Chrome pour inspeter composants
 
-#### Backend
-- **Port API** : http://localhost:3000
-- **Test endpoints** : Utilisez Postman ou Thunder Client
-- **Base de données** : Connectez-vous avec MySQL Workbench (localhost:3306, root/password)
-- **Minio Console** : http://localhost:9000 (minioadmin/minioadmin)
+#### Backend (Node.js)
+```bash
+# 1. Vérifier endpoints disponibles
+curl http://localhost:3000
 
-### Troubleshooting
+# 2. Tester registration
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"pass123"}'
 
-**Erreur : "API_URL not found"**
-- Vérifiez le fichier `gestion/.env.local`
-- Assurez-vous que `VITE_API_URL=http://localhost:3000/api` est défini
+# 3. Vérifier logs
+docker-compose logs -f backend
 
-**Erreur : "Cannot find module"**
-- Exécutez `npm install` dans le répertoire (frontend ou backend)
-- Vérifiez les chemins relatifs dans les imports
+# 4. Accéder au conteneur
+docker-compose exec backend /bin/sh
+npm list
+```
 
-**Base de données ne démarre pas**
-- Vérifiez que le port 3306 n'est pas utilisé par une autre instance MySQL
-- Nettoyez les volumes Docker : `docker-compose down -v`
+#### Base de Données
+```bash
+# Accédez à PhpMyAdmin
+http://localhost:8080
+# Server: mysql
+# Username: root
+# Password: password
 
-**Minio ne répond pas**
-- Vérifiez que le port 9000 n'est pas occupé
-- Consultez les logs : `docker-compose logs minio`
+# OU via terminal
+docker-compose exec mysql mysql -u root -p
+# Password: password
 
-**Token expiré / Non autorisé**
-- Reconnectez-vous à l'application
-- Supprimez les cookies/localStorage et rafraîchissez la page
+mysql> USE databeez;
+mysql> SELECT * FROM users;
+mysql> SELECT * FROM projects;
+mysql> SELECT * FROM notes;
+```
+
+#### Minio / S3 Storage
+```bash
+# Console web
+http://localhost:9000
+# Username: minioadmin
+# Password: passer123
+
+# Vérifier les fichiers
+# Bucket: databeez-notes
+# Folder: notes/
+# Files: {noteId}.json
+```
+
+### Hot Reload & Rechargement
+
+**Frontend:**
+- ✅ Modifications `.jsx` → Auto-reload (< 1 seconde)
+- ✅ Modifications `tailwind.config.js` → Auto-reload
+- ✅ Modifications CSS → Auto-reload
+- ❌ Ajout de dépendances → Redémarrer `npm run dev`
+
+**Backend:**
+- ❌ Les modifications ne se rechargent PAS automatiquement
+- ✅ Redémarrez avec: `docker-compose restart backend`
+
+**Minio / MySQL:**
+- Les données persistent dans les volumes Docker
+- Utilisez `docker-compose down -v` pour reset complètement
 
 ## Captures d'Écran
 
@@ -379,7 +802,146 @@ databeez/
         └── index.css          # Styles globaux
 ```
 
-## Contribution
+---
+
+## ⚡ Commandes Rapides
+
+### 🚀 Démarrage Complet (Recommandé)
+```bash
+# 1. Se placer dans le dossier du projet
+cd databeez
+
+# 2. Démarrer tous les services (MySQL, Minio, Backend, Frontend)
+docker-compose up --build
+
+# 3. Accéder à l'application
+# Frontend: http://localhost:5173
+# Backend: http://localhost:3000
+# PhpMyAdmin: http://localhost:8080
+# Minio: http://localhost:9000
+
+# 4. Se Inscrire
+# Email: test@example.com
+# Password: password123
+# Thème: Cliquez l'icône soleil/lune pour basculer
+```
+
+### 🔄 Démarrage Sans Rebuild
+```bash
+docker-compose up
+# (Plus rapide si aucune modification du code)
+```
+
+### 🛑 Arrêter tout
+```bash
+docker-compose down
+```
+
+### 🔧 Restart un service spécifique
+```bash
+docker-compose restart backend
+docker-compose restart frontend
+docker-compose restart mysql
+```
+
+### 📊 Voir les logs
+```bash
+# Tous les services
+docker-compose logs -f
+
+# Un service spécifique
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f mysql
+docker-compose logs -f minio
+```
+
+### 🧹 Nettoyer complètement (Reset DB)
+```bash
+docker-compose down -v
+docker-compose up --build
+# Redémarre à zéro, BD vide
+```
+
+### 🐛 Tester l'API avec curl
+```bash
+# 1. Inscription
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# 2. Connexion
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# 3. Récupérer profil (remplacez TOKEN)
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:3000/api/auth/me
+
+# 4. Créer un projet (remplacez TOKEN)
+curl -X POST http://localhost:3000/api/projects \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"My Project","description":"Test"}'
+
+# 5. Récupérer les projets
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:3000/api/projects
+```
+
+---
+
+## 🎯 Prochaines Étapes Recommandées
+
+### Pour Développement
+1. **Frontend:**
+   - Familiarisez-vous avec la structure React dans `gestion/src/`
+   - Modifiez les composants pour tester le hot reload
+   - Utilisez Chrome DevTools (F12) pour déboguer
+
+2. **Backend:**
+   - Consultez les endpoints disponibles: http://localhost:3000
+   - Testez avec Postman ou curl
+   - Modifiez `server.js` (nécessite restart: `docker-compose restart backend`)
+
+3. **Database:**
+   - Accédez PhpMyAdmin pour vérifier les données: http://localhost:8080
+   - Explorez la structure des tables
+
+### Pour Production
+1. Builder le frontend: `cd gestion && npm run build`
+2. Configurer variables d'environnement
+3. Déployer sur un serveur (Heroku, Vercel, VPS)
+
+### Pour Collaboration
+1. Créer des branches feature: `git checkout -b feature/nom`
+2. Tester complètement avant pull request
+3. Documenter les changements
+
+---
+
+## 📝 Notes Importantes
+
+⚠️ **Sécurité:**
+- ❌ Ne commettez JAMAIS les fichiers `.env` avec les secrets
+- ✅ Utilisez `.env.example` comme template
+- ✅ Changez `MINIO_ROOT_PASSWORD` et `MYSQL_ROOT_PASSWORD` en production
+- ✅ Utilisez une `JWT_SECRET` complexe en production
+
+⚠️ **Performance:**
+- ❌ Ne lancez pas `npm install` dans le Dockerfile sans `npm ci --legacy-peer-deps`
+- ✅ Utilisez `docker-compose down -v` pour nettoyer les volumes inutilisés
+- ✅ Vérifiez la taille des images: `docker images`
+
+⚠️ **Réseau Docker:**
+- ❌ Frontend ne peut PAS utiliser http://backend:3000 (nom DNS) depuis le navigateur
+- ✅ Utilisez http://localhost:3000 depuis le navigateur
+- ✅ Backend peut utiliser http://mysql et http://minio en interne
+
+---
+
+## 🤝 Contribution
 
 1. Fork le projet
 2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/nouvelle-fonctionnalite`)
@@ -387,6 +949,18 @@ databeez/
 4. Pushez vers la branche (`git push origin feature/nouvelle-fonctionnalite`)
 5. Ouvrez une Pull Request
 
-## Licence
+## 📄 Licence
 
-Ce projet est sous licence MIT."# Databeez" 
+Ce projet est sous licence **MIT**. Vous êtes libre de l'utiliser, le modifier et le distribuez sous les conditions de la licence MIT.
+
+---
+
+## 📞 Support & Questions
+
+Pour toute question ou problème:
+1. Consultez d'abord la section **Troubleshooting** ci-dessus
+2. Vérifiez les logs: `docker-compose logs -f`
+3. Testez l'API directement avec curl ou Postman
+4. Vérifiez que tous les ports sont accessibles
+
+**Bonne chance avec DataBeez!** 🚀 

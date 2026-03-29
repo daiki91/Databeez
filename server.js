@@ -61,8 +61,12 @@ async function initDb() {
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    created_by INT NOT NULL,
+    updated_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
   )`);
 
   await db.query(`CREATE TABLE IF NOT EXISTS notes (
@@ -70,9 +74,27 @@ async function initDb() {
     project_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    created_by INT NOT NULL,
+    updated_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+  )`);
+
+  await db.query(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    user_id INT NOT NULL,
+    old_values JSON,
+    new_values JSON,
+    action_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_date (action_date)
   )`);
 
   console.log("Base de données initialisée");
@@ -90,6 +112,25 @@ function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     return res.status(401).json({ message: "Token invalide" });
+  }
+}
+
+// Helper pour enregistrer les modifications dans audit_logs
+async function logAudit(entityType, entityId, action, userId, oldValues = null, newValues = null) {
+  try {
+    await db.execute(
+      "INSERT INTO audit_logs (entity_type, entity_id, action, user_id, old_values, new_values) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        entityType,
+        entityId,
+        action,
+        userId,
+        oldValues ? JSON.stringify(oldValues) : null,
+        newValues ? JSON.stringify(newValues) : null
+      ]
+    );
+  } catch (error) {
+    console.error("Erreur audit log:", error);
   }
 }
 
@@ -198,30 +239,159 @@ app.get("/api/auth/me", authMiddleware, async (req, res) => {
   res.json({ user: req.user });
 });
 
+// Mettre à jour le profil utilisateur (téléphone et/ou mot de passe)
+app.put("/api/auth/profile", authMiddleware, async (req, res) => {
+  const { phone, password } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // Vérifier si le téléphone est déjà utilisé (s'il a changé)
+    if (phone) {
+      const [existingPhone] = await db.execute(
+        "SELECT id FROM users WHERE phone = ? AND id != ?",
+        [phone, userId]
+      );
+      if (existingPhone.length > 0) {
+        return res.status(409).json({ message: "Ce numéro de téléphone est déjà utilisé" });
+      }
+    }
+
+    let updateFields = [];
+    let updateValues = [];
+
+    // Construire les champs à mettre à jour
+    if (phone !== undefined) {
+      updateFields.push("phone = ?");
+      updateValues.push(phone || null);
+    }
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Le mot de passe doit contenir au moins 6 caractères" });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      updateFields.push("password_hash = ?");
+      updateValues.push(hash);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: "Aucune modification à apporter" });
+    }
+
+    // Ajouter l'ID pour la clause WHERE
+    updateValues.push(userId);
+
+    // Exécuter la mise à jour
+    const query = `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`;
+    await db.execute(query, updateValues);
+
+    // Récupérer l'utilisateur mis à jour
+    const [updatedUser] = await db.execute("SELECT id, email, phone FROM users WHERE id = ?", [userId]);
+    const user = updatedUser[0];
+
+    // Générer un nouveau token avec les données mises à jour
+    const newToken = jwt.sign(
+      { id: user.id, email: user.email, phone: user.phone },
+      jwtSecret,
+      { expiresIn: "8h" }
+    );
+
+    res.json({
+      message: "Profil mis à jour avec succès",
+      token: newToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erreur lors de la mise à jour du profil" });
+  }
+});
+
 app.get("/api/projects", authMiddleware, async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM projects ORDER BY created_at DESC");
+  const [rows] = await db.query(`
+    SELECT 
+      p.*,
+      COUNT(n.id) as notesCount
+    FROM projects p
+    LEFT JOIN notes n ON p.id = n.project_id
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
+  `);
   res.json(rows);
 });
 
 app.post("/api/projects", authMiddleware, async (req, res) => {
   const { title, description } = req.body;
   if (!title) return res.status(400).json({ message: "Titre requis" });
-  const [result] = await db.execute("INSERT INTO projects (title, description) VALUES (?, ?)", [title, description || null]);
-  const [projectRow] = await db.execute("SELECT * FROM projects WHERE id = ?", [result.insertId]);
-  res.status(201).json(projectRow[0]);
+  
+  const userId = req.user.id;
+  const [result] = await db.execute(
+    "INSERT INTO projects (title, description, created_by) VALUES (?, ?, ?)", 
+    [title, description || null, userId]
+  );
+  
+  const projectId = result.insertId;
+  
+  // Enregistrer dans audit_logs
+  await logAudit("project", projectId, "CREATE", userId, null, { title, description });
+  
+  // Récupérer le projet avec infos utilisateur
+  const [projectRow] = await db.execute(`
+    SELECT 
+      p.*,
+      u.email as created_by_email,
+      u.phone as created_by_phone
+    FROM projects p
+    JOIN users u ON p.created_by = u.id
+    WHERE p.id = ?
+  `, [projectId]);
+  
+  const project = projectRow[0];
+  project.notesCount = 0;
+  res.status(201).json(project);
 });
 
 app.put("/api/projects/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
-  await db.execute("UPDATE projects SET title = ?, description = ? WHERE id = ?", [title, description, id]);
+  const userId = req.user.id;
+  
+  // Récupérer les anciennes valeurs
+  const [oldRows] = await db.execute("SELECT * FROM projects WHERE id = ?", [id]);
+  const oldValues = oldRows[0] ? { title: oldRows[0].title, description: oldRows[0].description } : null;
+  
+  // Mettre à jour
+  await db.execute(
+    "UPDATE projects SET title = ?, description = ?, updated_by = ? WHERE id = ?", 
+    [title, description, userId, id]
+  );
+  
+  // Enregistrer dans audit_logs
+  const newValues = { title, description };
+  await logAudit("project", id, "UPDATE", userId, oldValues, newValues);
+  
   const [rows] = await db.execute("SELECT * FROM projects WHERE id = ?", [id]);
   res.json(rows[0]);
 });
 
 app.delete("/api/projects/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
+  
+  // Récupérer les infos avant suppression
+  const [projectRows] = await db.execute("SELECT * FROM projects WHERE id = ?", [id]);
+  const project = projectRows[0];
+  
+  // Supprimer
   await db.execute("DELETE FROM projects WHERE id = ?", [id]);
+  
+  // Enregistrer dans audit_logs
+  await logAudit("project", id, "DELETE", userId, { title: project.title, description: project.description }, null);
+  
   res.json({ message: "Projet supprimé" });
 });
 
@@ -241,11 +411,19 @@ app.post("/api/projects/:projectId/notes", authMiddleware, async (req, res) => {
   const { title, description } = req.body;
   if (!title) return res.status(400).json({ message: "Titre requis" });
 
+  const userId = req.user.id;
+  
   const [result] = await db.execute(
-    "INSERT INTO notes (project_id, title, description) VALUES (?, ?, ?)",
-    [projectId, title, description || null]
+    "INSERT INTO notes (project_id, title, description, created_by) VALUES (?, ?, ?, ?)",
+    [projectId, title, description || null, userId]
   );
-  const [rows] = await db.execute("SELECT * FROM notes WHERE id = ?", [result.insertId]);
+  
+  const noteId = result.insertId;
+  
+  // Enregistrer dans audit_logs
+  await logAudit("note", noteId, "CREATE", userId, null, { title, description });
+  
+  const [rows] = await db.execute("SELECT * FROM notes WHERE id = ?", [noteId]);
   const note = rows[0];
 
   // Save note in S3
@@ -257,8 +435,19 @@ app.post("/api/projects/:projectId/notes", authMiddleware, async (req, res) => {
 app.put("/api/notes/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { title, description } = req.body;
+  const userId = req.user.id;
 
-  await db.execute("UPDATE notes SET title = ?, description = ? WHERE id = ?", [title, description, id]);
+  // Récupérer les anciennes valeurs
+  const [oldRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [id]);
+  const oldValues = oldRows[0] ? { title: oldRows[0].title, description: oldRows[0].description } : null;
+
+  // Mettre à jour
+  await db.execute("UPDATE notes SET title = ?, description = ?, updated_by = ? WHERE id = ?", [title, description, userId, id]);
+  
+  // Enregistrer dans audit_logs
+  const newValues = { title, description };
+  await logAudit("note", id, "UPDATE", userId, oldValues, newValues);
+  
   const [rows] = await db.execute("SELECT * FROM notes WHERE id = ?", [id]);
   const note = rows[0];
 
@@ -269,7 +458,18 @@ app.put("/api/notes/:id", authMiddleware, async (req, res) => {
 
 app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
+  
+  // Récupérer les infos avant suppression
+  const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [id]);
+  const note = noteRows[0];
+  
+  // Supprimer
   await db.execute("DELETE FROM notes WHERE id = ?", [id]);
+  
+  // Enregistrer dans audit_logs
+  await logAudit("note", id, "DELETE", userId, { title: note.title, description: note.description }, null);
+  
   try {
     await minioClient.removeObject(bucketName, `notes/${id}.json`);
   } catch (err) {
@@ -277,6 +477,71 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
     console.warn("Suppression S3 note échouée :", err.message);
   }
   res.json({ message: "Note supprimée" });
+});
+
+// ====== ENDPOINTS HISTORIQUE ======
+
+// Historique d'un projet
+app.get("/api/projects/:projectId/history", authMiddleware, async (req, res) => {
+  const { projectId } = req.params;
+  const [logs] = await db.execute(`
+    SELECT 
+      al.*,
+      u.email as user_email,
+      u.phone as user_phone
+    FROM audit_logs al
+    JOIN users u ON al.user_id = u.id
+    WHERE al.entity_type = 'project' AND al.entity_id = ?
+    ORDER BY al.action_date DESC
+  `, [projectId]);
+  res.json(logs);
+});
+
+// Historique d'une note
+app.get("/api/notes/:noteId/history", authMiddleware, async (req, res) => {
+  const { noteId } = req.params;
+  const [logs] = await db.execute(`
+    SELECT 
+      al.*,
+      u.email as user_email,
+      u.phone as user_phone
+    FROM audit_logs al
+    JOIN users u ON al.user_id = u.id
+    WHERE al.entity_type = 'note' AND al.entity_id = ?
+    ORDER BY al.action_date DESC
+  `, [noteId]);
+  res.json(logs);
+});
+
+// Historique général avec filtres
+app.get("/api/history", authMiddleware, async (req, res) => {
+  const { entityType, entityId, limit = 50, offset = 0 } = req.query;
+  
+  let query = `
+    SELECT 
+      al.*,
+      u.email as user_email,
+      u.phone as user_phone
+    FROM audit_logs al
+    JOIN users u ON al.user_id = u.id
+    WHERE 1=1
+  `;
+  let params = [];
+  
+  if (entityType) {
+    query += " AND al.entity_type = ?";
+    params.push(entityType);
+  }
+  if (entityId) {
+    query += " AND al.entity_id = ?";
+    params.push(entityId);
+  }
+  
+  query += " ORDER BY al.action_date DESC LIMIT ? OFFSET ?";
+  params.push(parseInt(limit), parseInt(offset));
+  
+  const [logs] = await db.execute(query, params);
+  res.json(logs);
 });
 
 (async () => {

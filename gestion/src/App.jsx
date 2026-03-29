@@ -9,6 +9,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/ProjectDetail';
+import { Profile } from './pages/Profile';
 import { Layout } from './components/layout/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import './styles/index.css';
@@ -74,6 +75,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <ProjectDetail />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Profile />
                     </Layout>
                   </ProtectedRoute>
                 }
