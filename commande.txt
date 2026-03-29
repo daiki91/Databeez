@@ -12,6 +12,8 @@ docker-compose restart frontend
 docker-compose logs -f backend
 
 # Accéder à MySQL en ligne de commande
+
 docker exec -it databeez-mysql mysql -u root -p
 # Password: rootpass
 # Ensuite: USE databeez; SELECT * FROM users;
+
