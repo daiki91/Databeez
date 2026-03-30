@@ -100,3 +100,6 @@ Thumbs.db
 
 # Minio data (if running locally)
 # minio-data/
+
+# Fichier parasite Windows
+null

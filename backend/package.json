@@ -1,0 +1,27 @@
+{
+  "name": "databeez-backend",
+  "version": "1.0.0",
+  "description": "API backend for Databeez - Project and notes management",
+  "license": "ISC",
+  "author": "daiki91",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.6",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "minio": "^7.0.19",
+    "multer": "^2.1.1",
+    "mysql2": "^3.4.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

@@ -11,10 +11,27 @@ import { Card, CardBody, CardHeader } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { History } from '../components/common/History';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { ArrowLeft, Plus, Trash2, Calendar } from 'lucide-react';
+import { NoteAttachments } from '../components/notes/NoteAttachments';
+import { NoteEditor } from '../components/notes/NoteEditor';
+import { ArrowLeft, Plus, Trash2, Calendar, User, Edit2, Eye, Image as ImageIcon, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateTime, formatDateShort } from '../utils/dateUtils';
 import { toast } from 'sonner';
+import apiClient from '../services/api';
+
+const parseAttachments = (attachments) => {
+  if (!attachments) return [];
+  if (Array.isArray(attachments)) return attachments;
+  if (typeof attachments === 'string') {
+    try {
+      const parsed = JSON.parse(attachments);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
 
 export const ProjectDetail = () => {
   const { projectId } = useParams();
@@ -22,6 +39,7 @@ export const ProjectDetail = () => {
   const queryClient = useQueryClient();
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [activeTab, setActiveTab] = useState('notes');
+  const [editingNote, setEditingNote] = useState(null);
 
   // Récupérer les notes du projet
   const { data: notes = [], isLoading } = useQuery({
@@ -71,6 +89,21 @@ export const ProjectDetail = () => {
 
   const onSubmit = async (data) => {
     await createNoteMutation.mutateAsync(data);
+  };
+
+  const handlePreviewAttachment = async (attachment) => {
+    try {
+      const response = await apiClient.get(
+        `/notes/${attachment.noteId}/attachments/${attachment.id}/download`,
+        { responseType: 'blob' }
+      );
+      const blobUrl = URL.createObjectURL(response.data);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error('Erreur prévisualisation fichier:', error);
+      toast.error("Impossible d'ouvrir la prévisualisation");
+    }
   };
 
   const handleDeleteNote = (noteId) => {
@@ -234,28 +267,91 @@ export const ProjectDetail = () => {
                       <Card className="hover:shadow-lg">
                         <CardBody>
                           <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-slate-900 dark:text-white">
-                                {note.title}
-                              </h3>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-slate-900 dark:text-white truncate">
+                                  {note.title}
+                                </h3>
+                              </div>
+                              
                               {note.description && (
-                                <p className="text-slate-600 dark:text-slate-400 mt-2 whitespace-pre-wrap">
+                                <p className="text-slate-600 dark:text-slate-400 mt-2 whitespace-pre-wrap line-clamp-3">
                                   {note.description}
                                 </p>
                               )}
-                              <div className="flex items-center gap-2 mt-3 text-sm text-slate-500 dark:text-slate-400">
-                                <Calendar className="w-4 h-4" />
-                                {formatDateShort(note.created_at)}
+                              
+                              {/* Infos de création/modification */}
+                              <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Créée: {formatDateShort(note.created_at)}
+                                </div>
+                                
+                                {note.updated_at && note.updated_at !== note.created_at && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    Modifiée: {formatDateShort(note.updated_at)}
+                                  </div>
+                                )}
                               </div>
+
+                              {/* Attachements preview */}
+                              {parseAttachments(note.attachments).length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {parseAttachments(note.attachments).slice(0, 3).map((attachment) => {
+                                    const isImage = attachment.fileType?.startsWith('image/');
+                                    return (
+                                      <div
+                                        key={attachment.id}
+                                        className="flex items-center justify-between gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {isImage ? (
+                                            <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />
+                                          ) : (
+                                            <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                                          )}
+                                          <span className="text-xs text-slate-700 dark:text-slate-300 truncate">
+                                            {attachment.fileName}
+                                          </span>
+                                        </div>
+                                        <button
+                                          onClick={() => handlePreviewAttachment({ ...attachment, noteId: note.id })}
+                                          className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                                          title="Prévisualiser"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                  {parseAttachments(note.attachments).length > 3 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{parseAttachments(note.attachments).length - 3} fichiers
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <button
-                              onClick={() => handleDeleteNote(note.id)}
-                              disabled={deleteNoteMutation.isPending}
-                              className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
-                              title="Supprimer la note"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
+
+                            {/* Boutons actions */}
+                            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                              <button
+                                onClick={() => setEditingNote(note)}
+                                className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                                title="Éditer la note"
+                              >
+                                <Edit2 className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteNote(note.id)}
+                                disabled={deleteNoteMutation.isPending}
+                                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer la note"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
                           </div>
                         </CardBody>
                       </Card>
@@ -275,6 +371,17 @@ export const ProjectDetail = () => {
           </Card>
         )}
       </div>
+
+      {/* Modal de lecture/édition d'une note */}
+      <AnimatePresence>
+        {editingNote && (
+          <NoteEditor
+            note={editingNote}
+            projectId={projectId}
+            onClose={() => setEditingNote(null)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

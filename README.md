@@ -4,6 +4,58 @@
 >
 > Développée par **daiki91** | Conçue avec React, Node.js et Docker
 
+## 🏗️ Structure du Projet
+
+```
+databeez/
+├── backend/                      ← API Node.js + Express
+│   ├── src/
+│   │   └── server.js            # Serveur principal
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── Dockerfile
+│   ├── .env
+│   └── README.md               # Documentation backend
+│
+├── frontend/                      ← Interface React + Vite
+│   ├── src/
+│   │   ├── main.jsx
+│   │   ├── App.jsx
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── contexts/
+│   │   └── ...
+│   ├── public/
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── Dockerfile
+│   ├── Dockerfile.frontend      # (deprecated, voir Dockerfile)
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── .env
+│   ├── .npmrc
+│   └── README.md               # Documentation frontend
+│
+├── docs/                         ← Documentation
+│   ├── ARCHITECTURE.md
+│   └── API.md
+│
+├── docker-compose.yml           ← Orchestration des conteneurs
+├── sqlScrip.sql                 ← Schéma MySQL
+├── package.json                 ← (Legacy, non utilisé)
+├── server.js                    ← (Legacy, voir backend/src/)
+├── README.md                    ← Ce fichier
+├── CAHIER_DE_CHARGE.md
+└── .gitignore
+```
+
+### 📚 Hiérarchie
+
+- **`/backend`** - Service API REST (Node.js, port 3000)
+- **`/frontend`** - Application web (React, port 5173)
+- **`docker-compose.yml`** - Orchestre tous les services (backend, frontend, MySQL, Minio, PhpMyAdmin)
+
 ## 📋 Description de la Solution
 
 **Databeez** est une plateforme complète de gestion de projets et de suivi d'avancement conçue pour les équipes et les individus souhaitant organiser leur travail efficacement.

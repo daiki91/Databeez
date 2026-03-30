@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mysql = require("mysql2/promise");
 const Minio = require("minio");
+const multer = require("multer");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +36,21 @@ const minioClient = new Minio.Client({
 });
 
 const bucketName = process.env.MINIO_BUCKET || "databeez-notes";
+
+// Configuration Multer pour l'upload
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Type de fichier non autorisé. Utilisez PDF ou images (PNG, JPEG, GIF, WEBP)'));
+    }
+  }
+});
 
 async function initStorage() {
   try {
@@ -74,6 +91,7 @@ async function initDb() {
     project_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    attachments JSON,
     created_by INT NOT NULL,
     updated_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -96,6 +114,19 @@ async function initDb() {
     INDEX idx_entity (entity_type, entity_id),
     INDEX idx_date (action_date)
   )`);
+
+  // Migration: Ajouter la colonne attachments si elle n'existe pas
+  try {
+    await db.query(`ALTER TABLE notes ADD COLUMN attachments JSON DEFAULT NULL`);
+    console.log("Colonne attachments ajoutée à la table notes");
+  } catch (error) {
+    if (error.code === "ER_DUP_FIELDNAME") {
+      // Column already exists
+      console.log("Colonne attachments existe déjà");
+    } else {
+      console.warn("Erreur migration attachments:", error.message);
+    }
+  }
 
   console.log("Base de données initialisée");
 }
@@ -132,6 +163,21 @@ async function logAudit(entityType, entityId, action, userId, oldValues = null, 
   } catch (error) {
     console.error("Erreur audit log:", error);
   }
+}
+
+function normalizeAttachments(attachmentsValue) {
+  if (!attachmentsValue) return [];
+  if (Array.isArray(attachmentsValue)) return attachmentsValue;
+  if (typeof attachmentsValue === "string") {
+    try {
+      const parsed = JSON.parse(attachmentsValue);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn("Erreur parsing attachments:", error.message);
+      return [];
+    }
+  }
+  return [];
 }
 
 app.get("/", (req, res) => {
@@ -402,7 +448,19 @@ app.get("/api/notes", authMiddleware, async (req, res) => {
 
 app.get("/api/projects/:projectId/notes", authMiddleware, async (req, res) => {
   const { projectId } = req.params;
-  const [rows] = await db.execute("SELECT * FROM notes WHERE project_id = ? ORDER BY created_at DESC", [projectId]);
+  const [rows] = await db.execute(`
+    SELECT 
+      n.*,
+      uc.email as created_by_email,
+      uc.phone as created_by_phone,
+      uu.email as updated_by_email,
+      uu.phone as updated_by_phone
+    FROM notes n
+    LEFT JOIN users uc ON n.created_by = uc.id
+    LEFT JOIN users uu ON n.updated_by = uu.id
+    WHERE n.project_id = ?
+    ORDER BY n.created_at DESC
+  `, [projectId]);
   res.json(rows);
 });
 
@@ -414,8 +472,8 @@ app.post("/api/projects/:projectId/notes", authMiddleware, async (req, res) => {
   const userId = req.user.id;
   
   const [result] = await db.execute(
-    "INSERT INTO notes (project_id, title, description, created_by) VALUES (?, ?, ?, ?)",
-    [projectId, title, description || null, userId]
+    "INSERT INTO notes (project_id, title, description, created_by, attachments) VALUES (?, ?, ?, ?, ?)",
+    [projectId, title, description || null, userId, JSON.stringify([])]
   );
   
   const noteId = result.insertId;
@@ -464,6 +522,18 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
   const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [id]);
   const note = noteRows[0];
   
+  // Supprimer tous les fichiers attachés de Minio
+  if (note.attachments) {
+    const attachments = normalizeAttachments(note.attachments);
+    for (const attachment of attachments) {
+      try {
+        await minioClient.removeObject(bucketName, attachment.minioPath);
+      } catch (err) {
+        console.warn(`Suppression fichier ${attachment.minioPath} échouée:`, err.message);
+      }
+    }
+  }
+  
   // Supprimer
   await db.execute("DELETE FROM notes WHERE id = ?", [id]);
   
@@ -477,6 +547,173 @@ app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
     console.warn("Suppression S3 note échouée :", err.message);
   }
   res.json({ message: "Note supprimée" });
+});
+
+// ====== ENDPOINTS UPLOAD DE FICHIERS ======
+
+// Upload d'un fichier attaché à une note
+app.post("/api/notes/:noteId/attachments", authMiddleware, upload.single('file'), async (req, res) => {
+  const { noteId } = req.params;
+  
+  if (!req.file) {
+    return res.status(400).json({ message: "Aucun fichier fourni" });
+  }
+
+  const userId = req.user.id;
+
+  try {
+    const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [noteId]);
+    if (!noteRows.length) {
+      return res.status(404).json({ message: "Note non trouvée" });
+    }
+
+    const note = noteRows[0];
+    const fileExt = path.extname(req.file.originalname);
+    const fileName = `${noteId}-${Date.now()}${fileExt}`;
+    const minioPath = `notes/attachments/${fileName}`;
+
+    // Upload to Minio
+    await minioClient.putObject(bucketName, minioPath, req.file.buffer, req.file.size, {
+      'Content-Type': req.file.mimetype
+    });
+
+    // Mettre à jour les attachments dans la note
+    let attachments = [];
+    if (note.attachments) {
+      attachments = normalizeAttachments(note.attachments);
+    }
+
+    const newAttachment = {
+      id: Date.now(),
+      fileName: req.file.originalname,
+      minioPath: minioPath,
+      fileType: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date().toISOString()
+    };
+
+    attachments.push(newAttachment);
+
+    await db.execute(
+      "UPDATE notes SET attachments = ?, updated_by = ? WHERE id = ?",
+      [JSON.stringify(attachments), userId, noteId]
+    );
+
+    // Enregistrer dans audit_logs
+    await logAudit("note", noteId, "UPDATE", userId, null, { attachments: attachments });
+
+    res.status(201).json(newAttachment);
+  } catch (error) {
+    console.error("Erreur upload:", error);
+    res.status(500).json({ message: "Erreur lors de l'upload du fichier" });
+  }
+});
+
+// Récupérer les attachments d'une note
+app.get("/api/notes/:noteId/attachments", authMiddleware, async (req, res) => {
+  const { noteId } = req.params;
+
+  try {
+    const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [noteId]);
+    if (!noteRows.length) {
+      return res.status(404).json({ message: "Note non trouvée" });
+    }
+
+    const note = noteRows[0];
+    let attachments = [];
+    if (note.attachments) {
+      attachments = normalizeAttachments(note.attachments);
+    }
+
+    res.json(attachments);
+  } catch (error) {
+    console.error("Erreur récupération attachments:", error);
+    res.status(500).json({ message: "Erreur lors de la récupération des attachments" });
+  }
+});
+
+// Supprimer un attachement d'une note
+app.delete("/api/notes/:noteId/attachments/:attachmentId", authMiddleware, async (req, res) => {
+  const { noteId, attachmentId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [noteId]);
+    if (!noteRows.length) {
+      return res.status(404).json({ message: "Note non trouvée" });
+    }
+
+    const note = noteRows[0];
+    let attachments = [];
+    if (note.attachments) {
+      try {
+        attachments = JSON.parse(note.attachments);
+      } catch (err) {
+        console.warn("Erreur parsing attachments:", err.message);
+      }
+    }
+
+    const attachmentToRemove = attachments.find(a => a.id == attachmentId);
+    if (!attachmentToRemove) {
+      return res.status(404).json({ message: "Fichier non trouvé" });
+    }
+
+    // Supprimer de Minio
+    try {
+      await minioClient.removeObject(bucketName, attachmentToRemove.minioPath);
+    } catch (err) {
+      console.warn("Suppression fichier Minio échouée:", err.message);
+    }
+
+    // Mettre à jour la note
+    attachments = attachments.filter(a => a.id != attachmentId);
+    await db.execute(
+      "UPDATE notes SET attachments = ?, updated_by = ? WHERE id = ?",
+      [JSON.stringify(attachments), userId, noteId]
+    );
+
+    // Enregistrer dans audit_logs
+    await logAudit("note", noteId, "UPDATE", userId, null, { attachments: attachments });
+
+    res.json({ message: "Fichier supprimé" });
+  } catch (error) {
+    console.error("Erreur suppression attachement:", error);
+    res.status(500).json({ message: "Erreur lors de la suppression du fichier" });
+  }
+});
+
+// Télécharger/Afficher un fichier attaché
+app.get("/api/notes/:noteId/attachments/:attachmentId/download", authMiddleware, async (req, res) => {
+  const { noteId, attachmentId } = req.params;
+
+  try {
+    const [noteRows] = await db.execute("SELECT * FROM notes WHERE id = ?", [noteId]);
+    if (!noteRows.length) {
+      return res.status(404).json({ message: "Note non trouvée" });
+    }
+
+    const note = noteRows[0];
+    let attachments = [];
+    if (note.attachments) {
+      attachments = normalizeAttachments(note.attachments);
+    }
+
+    const attachment = attachments.find(a => a.id == attachmentId);
+    if (!attachment) {
+      return res.status(404).json({ message: "Fichier non trouvé" });
+    }
+
+    // Récupérer le fichier de Minio
+    const dataStream = await minioClient.getObject(bucketName, attachment.minioPath);
+    
+    res.setHeader('Content-Type', attachment.fileType);
+    res.setHeader('Content-Disposition', `inline; filename="${attachment.fileName}"`);
+    
+    dataStream.pipe(res);
+  } catch (error) {
+    console.error("Erreur téléchargement fichier:", error);
+    res.status(500).json({ message: "Erreur lors du téléchargement du fichier" });
+  }
 });
 
 // ====== ENDPOINTS HISTORIQUE ======

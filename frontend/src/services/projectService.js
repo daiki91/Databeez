@@ -48,4 +48,35 @@ export const projectService = {
     const response = await apiClient.delete(`/notes/${noteId}`);
     return response.data;
   },
+
+  // ====== GESTION DES ATTACHEMENTS ======
+
+  // Récupérer les attachements d'une note
+  getNoteAttachments: async (noteId) => {
+    const response = await apiClient.get(`/notes/${noteId}/attachments`);
+    return response.data || [];
+  },
+
+  // Upload un fichier pour une note
+  uploadNoteAttachment: async (noteId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`/notes/${noteId}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Supprimer un attachement
+  deleteNoteAttachment: async (noteId, attachmentId) => {
+    const response = await apiClient.delete(`/notes/${noteId}/attachments/${attachmentId}`);
+    return response.data;
+  },
+
+  // Obtenir l'URL pour télécharger/afficher un fichier
+  getAttachmentDownloadUrl: (noteId, attachmentId) => {
+    return `${apiClient.defaults.baseURL}/notes/${noteId}/attachments/${attachmentId}/download`;
+  },
 };

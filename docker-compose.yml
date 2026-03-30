@@ -51,8 +51,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: databeez-backend
     ports:
       - "3000:3000"
@@ -71,13 +71,16 @@ services:
       MINIO_SECRET_KEY: passer123
       MINIO_BUCKET: databeez-notes
       JWT_SECRET: secret123
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     networks:
       - databeez-network
 
   frontend:
     build:
-      context: ./gestion
-      dockerfile: Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: databeez-frontend
     ports:
       - "5173:5173"
@@ -85,6 +88,9 @@ services:
       - backend
     environment:
       VITE_API_URL: http://localhost:3000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     networks:
       - databeez-network
 

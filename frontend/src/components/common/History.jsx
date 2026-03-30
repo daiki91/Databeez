@@ -30,6 +30,31 @@ const textColorClasses = {
   danger: 'text-red-600 dark:text-red-400'
 };
 
+const parseJsonField = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const formatValue = (value, max = 50) => {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'string') {
+    return value.length > max ? `"${value.substring(0, max)}..."` : `"${value}"`;
+  }
+  if (typeof value === 'object') {
+    const json = JSON.stringify(value);
+    return json.length > max ? `${json.substring(0, max)}...` : json;
+  }
+  return String(value);
+};
+
 export const History = ({ entityType, entityId, title = "Historique" }) => {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: [`history-${entityType}`, entityId],
@@ -73,6 +98,8 @@ export const History = ({ entityType, entityId, title = "Historique" }) => {
           const userDisplay = log.user_email || log.user_phone || 'Utilisateur supprimé';
           const colorClass = colorClasses[actionConfig.color];
           const textColorClass = textColorClasses[actionConfig.color];
+          const oldValues = parseJsonField(log.old_values) || {};
+          const newValues = parseJsonField(log.new_values) || {};
 
           return (
             <div
@@ -100,24 +127,24 @@ export const History = ({ entityType, entityId, title = "Historique" }) => {
                 {/* Afficher les modifications */}
                 {(log.action === 'UPDATE' || log.action === 'DELETE') && log.old_values && (
                   <div className="mt-2 text-xs space-y-1">
-                    {log.old_values && Object.entries(JSON.parse(log.old_values)).map(([key, oldVal]) => {
-                      const newVal = log.new_values ? JSON.parse(log.new_values)[key] : null;
+                    {Object.entries(oldValues).map(([key, oldVal]) => {
+                      const newVal = newValues[key];
                       if (log.action === 'DELETE' || (oldVal !== newVal)) {
                         return (
                           <div key={key} className="text-slate-600 dark:text-slate-400">
                             <span className="font-medium">{key}:</span>{' '}
                             {log.action === 'DELETE' ? (
                               <span className="line-through text-red-600 dark:text-red-400">
-                                {typeof oldVal === 'string' && oldVal?.length > 50 ? `"${oldVal.substring(0, 50)}..."` : typeof oldVal === 'string' ? `"${oldVal}"` : oldVal}
+                                {formatValue(oldVal, 50)}
                               </span>
                             ) : (
                               <>
                                 <span className="line-through text-red-600 dark:text-red-400">
-                                  {typeof oldVal === 'string' && oldVal?.length > 30 ? `"${oldVal.substring(0, 30)}..."` : typeof oldVal === 'string' ? `"${oldVal}"` : oldVal}
+                                  {formatValue(oldVal, 30)}
                                 </span>
                                 {' → '}
                                 <span className="text-green-600 dark:text-green-400">
-                                  {typeof newVal === 'string' && newVal?.length > 30 ? `"${newVal.substring(0, 30)}..."` : typeof newVal === 'string' ? `"${newVal}"` : newVal}
+                                  {formatValue(newVal, 30)}
                                 </span>
                               </>
                             )}
@@ -131,10 +158,10 @@ export const History = ({ entityType, entityId, title = "Historique" }) => {
 
                 {log.action === 'CREATE' && log.new_values && (
                   <div className="mt-2 text-xs space-y-1 text-green-600 dark:text-green-400">
-                    {Object.entries(JSON.parse(log.new_values)).map(([key, val]) => (
+                    {Object.entries(newValues).map(([key, val]) => (
                       val && (
                         <div key={key}>
-                          <span className="font-medium">{key}:</span> {typeof val === 'string' && val?.length > 50 ? `"${val.substring(0, 50)}..."` : typeof val === 'string' ? `"${val}"` : val}
+                          <span className="font-medium">{key}:</span> {formatValue(val, 50)}
                         </div>
                       )
                     ))}

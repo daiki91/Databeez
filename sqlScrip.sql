@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS notes (
   project_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
   description TEXT,
+  attachments JSON,
   created_by INT NOT NULL,
   updated_by INT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
