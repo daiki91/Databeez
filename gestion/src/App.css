@@ -498,6 +498,62 @@ li.active {
   display: flex;
   gap: 8px;
   margin: 32px 0 0;
+}
+
+/* Grilles intelligentes pour cartes proportionnelles */
+.cards-grid-responsive {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* Écrans mobiles - 1 colonne */
+@media (max-width: 640px) {
+  .cards-grid-responsive {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablettes - 2 colonnes */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .cards-grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Écrans normaux - 3 colonnes */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .cards-grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Grands écrans - 4 colonnes */
+@media (min-width: 1280px) {
+  .cards-grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Grille adaptative avec minmax pour distributions optimales */
+.cards-grid-adaptive {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* Assurez-vous que les cartes dans la grille occupent tout l'espace disponible */
+.cards-grid-responsive > div,
+.cards-grid-adaptive > div {
+  height: 100%;
+}
+
+/* Amélioration de la visibilité du contenu des cartes */
+.cards-grid-responsive > div > a > div,
+.cards-grid-adaptive > div > a > div {
+  height: 100%;
+}
 
   .logo {
     height: 18px;

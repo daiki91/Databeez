@@ -28,11 +28,11 @@ export const Navbar = ({ onMenuToggle }) => {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">D</span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">D</span>
               </div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white hidden sm:block">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white block">
                 Databeez
               </h1>
             </div>

@@ -36,7 +36,7 @@ export const Dashboard = () => {
       {/* En-tête */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-          Bienvenue, {user?.email || user?.phone} 👋
+          Bienvenue, {user?.email || user?.phone}
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mt-2">
           Voici un résumé de vos projets et activités récentes
@@ -101,8 +101,8 @@ export const Dashboard = () => {
             </CardBody>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {projects.slice(0, 4).map((project) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.slice(0, 6).map((project) => (
               <motion.div
                 key={project.id}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -110,19 +110,19 @@ export const Dashboard = () => {
                 transition={{ duration: 0.3 }}
               >
                 <Link to={`/projects/${project.id}`}>
-                  <Card className="hover:shadow-lg cursor-pointer h-full">
-                    <CardBody>
-                      <h3 className="font-semibold text-slate-900 dark:text-white line-clamp-1">
+                  <Card className="hover:shadow-xl cursor-pointer h-full group">
+                    <CardBody className="flex flex-col h-full">
+                      <h3 className="font-semibold text-lg text-slate-900 dark:text-white line-clamp-2 mb-2">
                         {project.title}
                       </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 mb-4 flex-1">
                         {project.description || 'Sans description'}
                       </p>
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           {formatDate(project.created_at)}
                         </span>
-                        <span className="inline-block px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs rounded-full font-medium">
+                        <span className="inline-block px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs rounded-full font-medium">
                           {project.notesCount || 0} notes
                         </span>
                       </div>
