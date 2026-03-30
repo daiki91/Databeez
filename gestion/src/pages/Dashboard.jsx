@@ -134,6 +134,13 @@ export const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Signature */}
+      <div className="text-center pt-8 border-t border-slate-200 dark:border-slate-700 mt-12">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Designed & Built by <span className="font-semibold text-slate-600 dark:text-slate-300">daiki91</span>
+        </p>
+      </div>
     </motion.div>
   );
 };
