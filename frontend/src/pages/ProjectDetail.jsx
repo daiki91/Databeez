@@ -40,6 +40,7 @@ export const ProjectDetail = () => {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [activeTab, setActiveTab] = useState('notes');
   const [editingNote, setEditingNote] = useState(null);
+  const [imagePopup, setImagePopup] = useState(null);
 
   // Récupérer les notes du projet
   const { data: notes = [], isLoading } = useQuery({
@@ -98,12 +99,26 @@ export const ProjectDetail = () => {
         { responseType: 'blob' }
       );
       const blobUrl = URL.createObjectURL(response.data);
-      window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      if (attachment.fileType?.startsWith('image/')) {
+        setImagePopup({
+          url: blobUrl,
+          fileName: attachment.fileName,
+        });
+      } else {
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      }
     } catch (error) {
       console.error('Erreur prévisualisation fichier:', error);
       toast.error("Impossible d'ouvrir la prévisualisation");
     }
+  };
+
+  const closeImagePopup = () => {
+    if (imagePopup?.url) {
+      URL.revokeObjectURL(imagePopup.url);
+    }
+    setImagePopup(null);
   };
 
   const handleDeleteNote = (noteId) => {
@@ -380,6 +395,46 @@ export const ProjectDetail = () => {
             projectId={projectId}
             onClose={() => setEditingNote(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Popup preview image */}
+      <AnimatePresence>
+        {imagePopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeImagePopup}
+            className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-5xl max-h-[90vh] w-full rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xl"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
+                  {imagePopup.fileName}
+                </p>
+                <button
+                  onClick={closeImagePopup}
+                  className="px-3 py-1.5 text-sm rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                >
+                  Fermer
+                </button>
+              </div>
+              <div className="p-2 bg-slate-950">
+                <img
+                  src={imagePopup.url}
+                  alt={imagePopup.fileName}
+                  className="w-full h-auto max-h-[78vh] object-contain"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
